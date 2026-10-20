@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#071525">
+<title>HIPPOFUSION X1000 — M1 à M5</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#071525;
+  --panel:#14243d;
+  --line:#344967;
+  --txt:#edf5ff;
+  --muted:#b4c5da;
+  --green:#24d493;
+  --gold:#ffd36a;
+  --blue:#55a9ff;
+  --red:#ff7180;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--txt);
+  font:15px/1.5 system-ui,Arial,sans-serif;
+}
+header{
+  text-align:center;
+  padding:25px 12px;
+  background:linear-gradient(135deg,#102c48,#071525);
+}
+h1{font-size:25px;margin:8px 0}
+h2{font-size:19px;color:var(--gold)}
+h3{font-size:16px}
+small,.muted{color:var(--muted)}
+main{max-width:1200px;margin:auto;padding:12px}
+section{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:15px;
+  margin:12px 0;
+}
+button,input,select,textarea{
+  background:#0b1b30;
+  color:var(--txt);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:11px;
+  font:inherit;
+}
+button{cursor:pointer}
+button:hover{border-color:var(--green)}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{max-width:100%}
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  align-items:center;
+}
+.controls>*{flex:1 1 140px}
+.primary{background:#126b53;font-weight:700}
+.warning{background:#704b12}
+.danger{background:#6c2535}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
+  gap:10px;
+}
+.stat{
+  padding:13px;
+  background:#0b1b30;
+  border:1px solid var(--line);
+  border-radius:10px;
+}
+.stat strong{display:block;font-size:22px;color:var(--green)}
+.tablewrap{overflow-x:auto}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:850px;
+}
+th,td{
+  padding:10px;
+  border-bottom:1px solid var(--line);
+  text-align:left;
+  vertical-align:top;
+}
+th{color:var(--gold);background:#0b1b30}
+.good{color:var(--green)}
+.bad{color:var(--red)}
+.gold{color:var(--gold)}
+.tag{
+  display:inline-block;
+  border-radius:20px;
+  border:1px solid var(--line);
+  padding:3px 9px;
+  font-size:12px;
+}
+pre{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  background:#09192b;
+  padding:12px;
+  border-radius:8px;
+}
+#journal{max-height:230px;overflow:auto}
+footer{text-align:center;padding:25px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🇸🇳🧠🔥 HIPPOFUSION X1000</h1>
+  <h2>M1 — M2 — M3 — M4 — M5</h2>
+  <p>Intelligence hippique autonome, adaptative et évolutive</p>
+  <small>Courses PMU françaises • Analyses • FIGÉS • Audits</small>
+  <p id="horloge"></p>
+</header>
+
+<main>
+<section>
+  <h2>⚙️ Centre de commande</h2>
+  <div class="controls">
+    <button class="primary" id="charger">🔄 Actualiser les données</button>
+    <button id="analyser">🧠 Analyser les courses</button>
+    <button class="warning" id="figer">🔒 FIGER les courses éligibles</button>
+    <button id="exporter">📥 Exporter les archives</button>
+  </div>
+  <p id="etat" class="muted">Initialisation...</p>
+  <label>
+    <input type="checkbox" id="auto" checked>
+    Actualisation automatique toutes les 2 minutes
+  </label>
+</section>
+
+<section>
+  <h2>📊 Tableau de bord</h2>
+  <div class="grid">
+    <div class="stat">Courses reçues<strong id="nCourses">0</strong></div>
+    <div class="stat">Courses analysées<strong id="nAnalyses">0</strong></div>
+    <div class="stat">FIGÉS locaux<strong id="nFiges">0</strong></div>
+    <div class="stat">Moteurs<strong>5</strong></div>
+  </div>
+</section>
+
+<section>
+  <h2>🔎 Filtres officiels</h2>
+  <div class="controls">
+    <input type="date" id="dateFiltre">
+    <select id="reunionFiltre"><option value="">Toutes les réunions</option></select>
+    <select id="courseFiltre"><option value="">Toutes les courses</option></select>
+    <select id="moteurFiltre">
+      <option value="">Tous les moteurs</option>
+      <option>M1</option><option>M2</option><option>M3</option>
+      <option>M4</option><option>M5</option>
+    </select>
+    <select id="statutFiltre">
+      <option value="">Tous les statuts</option>
+      <option value="FIGE">FIGÉ</option>
+      <option value="PROVISOIRE">PROVISOIRE</option>
+      <option value="INDISPONIBLE">INDISPONIBLE</option>
+    </select>
+  </div>
+</section>
+
+<section>
+  <h2>🏇 Courses disponibles</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Réunion</th><th>Course</th><th>Hippodrome</th>
+        <th>Départ Paris</th><th>Partants</th><th>Contrôle</th>
+      </tr></thead>
+      <tbody id="coursesBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>🧠 Tableau officiel M1–M5</h2>
+  <p class="muted">
+    Chaque moteur produit son classement indépendamment.
+    Aucun pronostic ne constitue une garantie de gain.
+  </p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Moteur</th>
+        <th>🥇 Gagnant espéré</th>
+        <th>🥈 Meilleur placé</th>
+        <th>Ordre d'arrivée espéré</th>
+        <th>🎯 Pari retenu</th>
+        <th>Qualification</th>
+        <th>Validation</th>
+        <th>Heure Paris</th>
+      </tr></thead>
+      <tbody id="pronosticsBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>🔒 Archives des FIGÉS</h2>
+  <p class="muted">
+    Les FIGÉS enregistrés dans ce navigateur ne peuvent plus être
+    modifiés par l'interface. Ils sont conservés localement.
+    Une conservation permanente exige un stockage serveur.
+  </p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>Course</th><th>Moteur</th><th>Pronostic</th>
+        <th>FIGÉ Paris</th><th>Empreinte</th>
+      </tr></thead>
+      <tbody id="figesBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>📋 Journal des contrôles</h2>
+  <pre id="journal"></pre>
+</section>
+
+<section>
+  <h2>📡 Source de données</h2>
+  <p>
+    Le logiciel lit <code>data/courses.json</code> depuis le
+    dépôt GitHub. Ce fichier doit contenir des courses réelles
+    avec des informations vérifiables.
+  </p>
+  <p class="muted">
+    Aucune donnée PMU, aucun cheval et aucune arrivée ne sont
+    créés artificiellement.
+  </p>
+</section>
+</main>
+
+<footer>
+  🇸🇳🧠🔥 HIPPOFUSION X1000 — M1 à M5<br>
+  Intelligence hippique • Transparence • Traçabilité
+</footer>
+
+<script>
+"use strict";
+
+const TZ="Europe/Paris";
+const DATA_URL="data/courses.json";
+const FIGES_KEY="hippofusion_x1000_figes_v1";
+
+const $=id=>document.getElementById(id);
+const state={
+  courses:[],
+  analyses:[],
+  figes:[],
+  sourceOK:false,
+  lastLoad:null
+};
+
+const weights={
+  M1:{forme:.30,aptitude:.25,regularite:.20,jockey:.10,entraineur:.10,vitesse:.05},
+  M2:{forme:.15,aptitude:.15,regularite:.15,jockey:.20,entraineur:.20,vitesse:.15},
+  M3:{forme:.15,aptitude:.20,regularite:.15,jockey:.10,entraineur:.10,vitesse:.30},
+  M4:{forme:.20,aptitude:.25,regularite:.25,jockey:.10,entraineur:.10,vitesse:.10},
+  M5:{forme:.20,aptitude:.20,regularite:.20,jockey:.15,entraineur:.15,vitesse:.10}
+};
+
+const metrics=[
+  "forme","aptitude","regularite",
+  "jockey","entraineur","vitesse"
+];
+
+function parisDate(date=new Date()){
+  return new Intl.DateTimeFormat("fr-CA",{
+    timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"
+  }).format(date);
+}
+
+function parisTime(date=new Date()){
+  return new Intl.DateTimeFormat("fr-FR",{
+    timeZone:TZ,
+    hour:"2-digit",minute:"2-digit",second:"2-digit",
+    hourCycle:"h23"
+  }).format(date);
+}
+
+function parisStamp(date=new Date()){
+  return parisDate(date)+" "+parisTime(date);
+}
+
+function log(message){
+  const line="["+parisStamp()+"] "+message;
+  $("journal").textContent=line+"\n"+$("journal").textContent;
+  $("journal").textContent=$("journal").textContent.slice(0,12000);
+}
+
+function status(message){
+  $("etat").textContent=message;
+}
+
+function escapeHTML(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  })[c]);
+}
+
+function dateValid(v){
+  if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
+  const d=new Date(v+"T12:00:00Z");
+  return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;
+}
+
+function parseStart(c){
+  if(typeof c.departISO!=="string")return null;
+  if(!/(Z|[+-]\d{2}:\d{2})$/.test(c.departISO))return null;
+  const d=new Date(c.departISO);
+  return Number.isNaN(d.getTime())?null:d;
+}
+
+function validateCourse(c){
+  const errors=[];
+  if(!c||typeof c!=="object")return ["Course invalide"];
+  if(!dateValid(c.date))errors.push("Date invalide");
+  if(!c.reunion)errors.push("Réunion absente");
+  if(!c.course)errors.push("Numéro de course absent");
+  if(!c.hippodrome)errors.push("Hippodrome absent");
+  const start=parseStart(c);
+  if(!start)errors.push("Départ ISO avec fuseau obligatoire");
+  else if(dateValid(c.date)&&parisDate(start)!==c.date)
+    errors.push("Date et départ incompatibles");
+  if(!Array.isArray(c.chevaux)||c.chevaux.length<2)
+    errors.push("Liste des chevaux insuffisante");
+  else{
+    const numeros=new Set();
+    for(const h of c.chevaux){
+      if(!Number.isInteger(h.numero)||h.numero<1)
+        errors.push("Numéro de cheval invalide");
+      if(numeros.has(h.numero))
+        errors.push("Numéro de cheval en double");
+      numeros.add(h.numero);
+      if(typeof h.nom!=="string"||!h.nom.trim())
+        errors.push("Nom de cheval absent");
+      if(h.nonPartant===true)continue;
+      for(const m of metrics){
+        if(typeof h[m]!=="number"||
+           !Number.isFinite(h[m])||h[m]<0||h[m]>100){
+          errors.push("Indicateur "+m+" invalide pour le n°"+h.numero);
+        }
+      }
+    }
+  }
+  return [...new Set(errors)];
+}
+
+function courseId(c){
+  return [c.date,c.reunion,c.course].join("_");
+}
+
+function chevauxActifs(c){
+  return c.chevaux.filter(h=>h.nonPartant!==true);
+}
+
+function score(h,moteur){
+  const w=weights[moteur];
+  return metrics.reduce((s,k)=>s+h[k]*w[k],0);
+}
+
+function analyseMoteur(c,moteur){
+  const chevaux=chevauxActifs(c);
+  const classement=chevaux.map(h=>({
+    numero:h.numero,nom:h.nom,
+    score:score(h,moteur)
+  })).sort((a,b)=>b.score-a.score||a.numero-b.numero);
+
+  const premier=classement[0];
+  const second=classement[1];
+  const ecart=premier.score-second.score;
+  const qualification=ecart>=8?"★★★★★":
+                       ecart>=4?"★★★★":"Étude";
+  const pari=ecart>=4?
+    "Simple gagnant n°"+premier.numero:
+    "Simple placé n°"+premier.numero;
+
+  return {
+    id:courseId(c),
+    moteur,
+    gagnant:premier,
+    place:second,
+    ordre:classement.slice(0,5).map(x=>x.numero),
+    pari,
+    qualification,
+    scorePremier:premier.score,
+    ecart,
+    date:c.date,
+    reunion:c.reunion,
+    course:c.course,
+    departISO:c.departISO,
+    statut:"PROVISOIRE"
+  };
+}
+
+function analyser(){
+  const result=[];
+  for(const c of state.courses){
+    const errors=validateCourse(c);
+    if(errors.length){
+      log("Course "+courseId(c)+" rejetée : "+errors.join("; "));
+      continue;
+    }
+    if(chevauxActifs(c).length<2){
+      log("Course "+courseId(c)+" : partants insuffisants");
+      continue;
+    }
+    for(const moteur of Object.keys(weights)){
+      result.push(analyseMoteur(c,moteur));
+    }
+  }
+  state.analyses=result;
+  log(result.length+" analyses M1–M5 calculées");
+  render();
+}
+
+async function charger(){
+  status("Chargement des données...");
+  try{
+    const url=DATA_URL+"?t="+Date.now();
+    const response=await fetch(url,{cache:"no-store"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    if(!Array.isArray(data.courses))
+      throw new Error("Le JSON doit contenir un tableau courses");
+    state.courses=data.courses;
+    state.sourceOK=true;
+    state.lastLoad=new Date();
+    log(data.courses.length+" courses reçues depuis "+DATA_URL);
+    analyser();
+    status("Données chargées à "+parisTime(state.lastLoad)+" (Paris)");
+  }catch(e){
+    state.sourceOK=false;
+    state.courses=[];
+    state.analyses=[];
+    log("Source indisponible : "+e.message);
+    status("Données PMU indisponibles : "+e.message);
+    render();
+  }
+}
+
+function figesExistants(){
+  try{
+    const v=JSON.parse(localStorage.getItem(FIGES_KEY)||"[]");
+    return Array.isArray(v)?v:[];
+  }catch{return []}
+}
+
+function saveFiges(){
+  localStorage.setItem(FIGES_KEY,JSON.stringify(state.figes));
+}
+
+function figer(){
+  const now=new Date();
+  let count=0;
+  for(const a of state.analyses){
+    const depart=new Date(a.departISO);
+    const remaining=depart.getTime()-now.getTime();
+    // Fenêtre de 15 minutes à 60 secondes avant le départ.
+    if(remaining<60000||remaining>900000)continue;
+    const key=a.id+"_"+a.moteur;
+    if(state.figes.some(f=>f.key===key))continue;
+    const snapshot={
+      key,
+      ...a,
+      statut:"FIGE",
+      figeISO:now.toISOString(),
+      figeParis:parisStamp(now),
+      version:"X1000-HTML-1"
+    };
+    state.figes.push(snapshot);
+    count++;
+  }
+  if(count){
+    try{
+      saveFiges();
+      log(count+" pronostics FIGÉS localement avant départ");
+    }catch(e){
+      state.figes=figesExistants();
+      log("Erreur de sauvegarde FIGÉ : "+e.message);
+    }
+  }
+  render();
+}
+
+async function hashObject(obj){
+  const data=new TextEncoder().encode(JSON.stringify(obj));
+  if(!crypto.subtle)return "SHA-256 indisponible";
+  const digest=await crypto.subtle.digest("SHA-256",data);
+  return [...new Uint8Array(digest)]
+    .map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+
+async function renderFiges(){
+  const body=$("figesBody");
+  body.replaceChildren();
+  for(const f of state.figes){
+    const tr=document.createElement("tr");
+    const cells=[
+      f.id,f.moteur,f.ordre.join("-"),
+      f.figeParis,"Calcul..."
+    ];
+    for(const v of cells){
+      const td=document.createElement("td");
+      td.textContent=v;
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+    const hash=await hashObject(f);
+    tr.lastChild.textContent=hash.slice(0,20)+"…";
+    tr.lastChild.title=hash;
+  }
+}
+
+function refreshFilters(){
+  const reunion=$("reunionFiltre");
+  const course=$("courseFiltre");
+  const oldR=reunion.value,oldC=course.value;
+  reunion.innerHTML='<option value="">Toutes les réunions</option>';
+  course.innerHTML='<option value="">Toutes les courses</option>';
+  const rs=[...new Set(state.courses.map(c=>String(c.reunion)))];
+  const cs=[...new Set(state.courses.map(c=>String(c.course)))];
+  for(const r of rs){
+    const o=document.createElement("option");
+    o.value=r;o.textContent=r;reunion.appendChild(o);
+  }
+  for(const c of cs){
+    const o=document.createElement("option");
+    o.value=c;o.textContent=c;course.appendChild(o);
+  }
+  if(rs.includes(oldR))reunion.value=oldR;
+  if(cs.includes(oldC))course.value=oldC;
+}
+
+function filtered(c,moteur,statut){
+  const d=$("dateFiltre").value;
+  const r=$("reunionFiltre").value;
+  const n=$("courseFiltre").value;
+  const m=$("moteurFiltre").value;
+  const s=$("statutFiltre").value;
+  return (!d||c.date===d)&&
+         (!r||String(c.reunion)===r)&&
+         (!n||String(c.course)===n)&&
+         (!m||moteur===m)&&
+         (!s||statut===s);
+}
+
+function render(){
+  $("nCourses").textContent=state.courses.length;
+  $("nAnalyses").textContent=state.analyses.length;
+  $("nFiges").textContent=state.figes.length;
+  refreshFilters();
+
+  const cb=$("coursesBody");
+  cb.innerHTML="";
+  for(const c of state.courses){
+    if(!filtered(c,"",""))continue;
+    const errors=validateCourse(c);
+    const actifs=Array.isArray(c.chevaux)?chevauxActifs(c).length:0;
+    const start=parseStart(c);
+    const heure=start?parisTime(start):"Inconnue";
+    const tr=document.createElement("tr");
+    for(const value of [
+      c.reunion,c.course,c.hippodrome,heure,actifs,
+      errors.length?errors.join("; "):"Validée"
+    ]){
+      const td=document.createElement("td");
+      td.textContent=value;
+      tr.appendChild(td);
+    }
+    cb.appendChild(tr);
+  }
+
+  const pb=$("pronosticsBody");
+  pb.innerHTML="";
+  for(const a of state.analyses){
+    const f=state.figes.find(x=>x.key===a.id+"_"+a.moteur);
+    const shown=f||a;
+    if(!filtered(shown,shown.moteur,shown.statut))continue;
+    const tr=document.createElement("tr");
+    for(const value of [
+      shown.moteur,
+      shown.gagnant.numero+" "+shown.gagnant.nom,
+      shown.place.numero+" "+shown.place.nom,
+      shown.ordre.join("-"),
+      shown.pari,
+      shown.qualification,
+      shown.statut,
+      parisTime(new Date(shown.departISO))
+    ]){
+      const td=document.createElement("td");
+      td.textContent=value;
+      tr.appendChild(td);
+    }
+    pb.appendChild(tr);
+  }
+  renderFiges();
+}
+
+function exporter(){
+  const payload={
+    projet:"HIPPOFUSION X1000",
+    version:"1",
+    exportISO:new Date().toISOString(),
+    figes:state.figes
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{
+    type:"application/json"
+  });
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="HIPPOFUSION_FIGES_"+parisDate()+".json";
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+$("charger").addEventListener("click",charger);
+$("analyser").addEventListener("click",analyser);
+$("figer").addEventListener("click",figer);
+$("exporter").addEventListener("click",exporter);
+
+for(const id of [
+  "dateFiltre","reunionFiltre","courseFiltre",
+  "moteurFiltre","statutFiltre"
+]){
+  $(id).addEventListener("change",render);
+}
+
+function tick(){
+  $("horloge").textContent="🕒 Paris : "+parisStamp();
+  if($("auto").checked)figer();
+}
+
+state.figes=figesExistants();
+$("dateFiltre").value=parisDate();
+render();
+tick();
+charger();
+
+setInterval(tick,1000);
+setInterval(()=>{
+  if($("auto").checked)charger();
+},120000);
+</script>
+</body>
+</html>
