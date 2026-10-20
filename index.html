@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071525">
+<title>HIPPOFUSION X1000 — M1 à M5</title>
+<style>
+:root{
+ --bg:#071525;--panel:#14243d;--line:#344967;
+ --txt:#edf5ff;--muted:#b4c5da;
+ --green:#24d493;--gold:#ffd36a;--blue:#55a9ff
+}
+*{box-sizing:border-box}
+body{
+ margin:0;background:var(--bg);color:var(--txt);
+ font:15px/1.5 system-ui,Arial,sans-serif
+}
+header{
+ text-align:center;padding:28px 12px;
+ background:linear-gradient(135deg,#102c48,#071525)
+}
+h1{font-size:25px;margin:8px 0}
+h2{font-size:19px;color:var(--gold)}
+small,.muted{color:var(--muted)}
+main{max-width:1200px;margin:auto;padding:12px}
+section{
+ background:var(--panel);border:1px solid var(--line);
+ border-radius:14px;padding:15px;margin:14px 0
+}
+input,select,textarea,button{
+ background:#091b2e;color:white;border:1px solid #50627c;
+ border-radius:8px;padding:11px;font:inherit;max-width:100%
+}
+input,select{width:100%}
+textarea{width:100%;min-height:125px}
+button{cursor:pointer;font-weight:700}
+button.primary{background:#137a57;border-color:#24d493}
+button:disabled{opacity:.45;cursor:not-allowed}
+.grid{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+ gap:10px
+}
+label{display:block;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px;border:1px solid var(--line);text-align:left}
+th{background:#203a58}
+.scroll{overflow-x:auto}
+.pill{
+ display:inline-block;border-radius:20px;padding:4px 9px;
+ background:#245342;color:#8af2bd
+}
+.warn{color:var(--gold)}
+.ok{color:var(--green)}
+.error{color:#ff9292}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+pre{
+ white-space:pre-wrap;overflow-wrap:anywhere;
+ background:#091b2e;padding:12px;border-radius:8px
+}
+footer{text-align:center;padding:25px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+<h1>🇸🇳🧠🔥 HIPPOFUSION X1000</h1>
+<strong>INTELLIGENCE HIPPIQUE M1–M5</strong>
+<p>Analyse indépendante • FIGÉS avant départ • Audits</p>
+<div id="clock" class="pill">Heure de Paris</div>
+</header>
+
+<main>
+<section>
+<h2>📡 Données des courses PMU</h2>
+<p class="muted">
+Importer un fichier JSON contenant les courses et les
+partants. Aucune donnée non vérifiée ne sera présentée
+comme officielle.
+</p>
+<input type="file" id="file" accept=".json,application/json">
+<div class="actions">
+<button onclick="loadRemote()">Actualiser latest.json</button>
+<button onclick="loadDemo()">Charger une démonstration</button>
+</div>
+<p id="source" class="muted">Source : aucune donnée chargée</p>
+</section>
+
+<section>
+<h2>🏇 Sélection de la course</h2>
+<div class="grid">
+<label>Date
+<input type="date" id="date">
+</label>
+<label>Réunion
+<select id="reunion"></select>
+</label>
+<label>Course
+<select id="course"></select>
+</label>
+</div>
+<div id="details" class="muted">
+Sélectionnez une course.
+</div>
+</section>
+
+<section>
+<h2>🧠 Analyse autonome M1–M5</h2>
+<p>
+Chaque moteur utilise une pondération distincte.
+Les scores sont indicatifs et dépendent de la qualité
+des données fournies.
+</p>
+<div class="actions">
+<button class="primary" onclick="analyze()">
+Lancer les cinq moteurs
+</button>
+<button onclick="freeze()">🔒 FIGER avant départ</button>
+<button onclick="exportData()">Exporter les archives</button>
+</div>
+<p id="status" class="muted">En attente d'analyse.</p>
+</section>
+
+<section>
+<h2>📊 Tableau officiel — huit colonnes</h2>
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>Moteur</th>
+<th>🥇 Gagnant espéré</th>
+<th>🥈 Meilleur placé</th>
+<th>Ordre d'arrivée espéré</th>
+<th>🎯 Pari retenu</th>
+<th>Qualification</th>
+<th>Validation</th>
+<th>Heure Paris</th>
+</tr>
+</thead>
+<tbody id="results">
+<tr><td colspan="8">Aucune analyse disponible.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>🔒 FIGÉS avant départ</h2>
+<p class="muted">
+Les analyses figées sont conservées dans le navigateur.
+Leur empreinte SHA-256 permet de détecter une modification
+du contenu. Ce stockage local ne constitue pas une preuve
+horodatée par un tiers.
+</p>
+<div id="freezes">Aucun FIGÉ enregistré.</div>
+</section>
+
+<section>
+<h2>📚 Historique et audits</h2>
+<div class="actions">
+<button onclick="renderHistory()">Actualiser l'historique</button>
+<button onclick="exportData()">Télécharger JSON</button>
+<button onclick="document.getElementById('restore').click()">
+Importer une archive
+</button>
+</div>
+<input type="file" id="restore" accept=".json" hidden>
+<pre id="history">Aucun historique.</pre>
+</section>
+</main>
+
+<footer>
+HIPPOFUSION X1000 — M1 à M5<br>
+Prototype privé d'analyse hippique<br>
+Aucun pronostic ne garantit un gain.
+</footer>
+
+<script>
+"use strict";
+
+const TZ="Europe/Paris";
+const KEY="hippofusion_x1000_v5";
+let races=[];
+let current=null;
+let predictions=[];
+let demo=false;
+
+const $=id=>document.getElementById(id);
+
+function paris(){
+ return new Intl.DateTimeFormat("fr-FR",{
+  timeZone:TZ,dateStyle:"short",timeStyle:"medium",
+  hour12:false
+ }).format(new Date());
+}
+
+function parisDate(){
+ return new Intl.DateTimeFormat("en-CA",{
+  timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"
+ }).format(new Date());
+}
+
+function clock(){
+ $("clock").textContent="🕒 Paris : "+paris();
+}
+clock();
+setInterval(clock,1000);
+$("date").value=parisDate();
+
+function safe(s){
+ return String(s??"").replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",
+  '"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+function store(){
+ try{
+  return JSON.parse(localStorage.getItem(KEY))||{
+   freezes:[],history:[]
+  };
+ }catch{
+  return {freezes:[],history:[]};
+ }
+}
+
+function save(s){
+ localStorage.setItem(KEY,JSON.stringify(s));
+}
+
+function normalize(raw){
+ const arr=Array.isArray(raw)?raw:
+  raw.courses||raw.races||[];
+ if(!Array.isArray(arr))throw Error("Liste de courses absente");
+ return arr.map((r,i)=>({
+  id:String(r.id||`${r.date}-${r.reunion}-${r.course}`),
+  date:String(r.date||parisDate()),
+  reunion:String(r.reunion||r.meeting||"R1"),
+  course:String(r.course||r.numeroCourse||i+1),
+  hippodrome:String(r.hippodrome||"Non renseigné"),
+  depart:String(r.depart||r.heureDepart||""),
+  verified:r.verified===true,
+  horses:(r.partants||r.horses||[]).map(h=>({
+   numero:Number(h.numero??h.number),
+   nom:String(h.nom||h.name||"Inconnu"),
+   forme:Number(h.forme??h.form??0),
+   regularite:Number(h.regularite??0),
+   aptitude:Number(h.aptitude??0),
+   entourage:Number(h.entourage??0),
+   valeur:Number(h.valeur??0),
+   risque:Number(h.risque??0),
+   nonPartant:h.nonPartant===true
+  }))
+ }));
+}
+
+function load(raw,isDemo=false){
+ races=normalize(raw);
+ demo=isDemo;
+ predictions=[];
+ $("source").textContent=isDemo?
+  "⚠️ Données fictives de démonstration":
+  "Données JSON importées — vérification de la source requise";
+ fillDates();
+}
+
+function fillDates(){
+ const dates=[...new Set(races.map(r=>r.date))].sort();
+ if(dates.length && !dates.includes($("date").value))
+  $("date").value=dates[0];
+ fillReunions();
+}
+
+function fillReunions(){
+ const rs=[...new Set(races.filter(r=>
+  r.date===$("date").value).map(r=>r.reunion))];
+ $("reunion").innerHTML=rs.map(r=>
+  `<option value="${safe(r)}">${safe(r)}</option>`).join("");
+ fillCourses();
+}
+
+function fillCourses(){
+ const arr=races.filter(r=>
+  r.date===$("date").value &&
+  r.reunion===$("reunion").value);
+ $("course").innerHTML=arr.map(r=>
+  `<option value="${safe(r.id)}">C${safe(r.course)} — ${safe(r.hippodrome)}</option>`
+ ).join("");
+ selectRace();
+}
+
+function selectRace(){
+ current=races.find(r=>r.id===$("course").value)||null;
+ predictions=[];
+ $("results").innerHTML=
+  '<tr><td colspan="8">Analyse non lancée.</td></tr>';
+ if(!current){
+  $("details").textContent="Aucune course disponible.";
+  return;
+ }
+ $("details").textContent=
+  `${current.hippodrome} — ${current.reunion} C${current.course}
+  — Départ : ${current.depart||"inconnu"}
+  — ${current.horses.length} chevaux enregistrés
+  — ${current.verified?"Source déclarée vérifiée":"Source non vérifiée"}`;
+}
+
+$("date").onchange=fillReunions;
+$("reunion").onchange=fillCourses;
+$("course").onchange=selectRace;
+
+$("file").onchange=async e=>{
+ const f=e.target.files[0];
+ if(!f)return;
+ try{
+  load(JSON.parse(await f.text()));
+ }catch(err){alert("Import impossible : "+err.message)}
+};
+
+async function loadRemote(){
+ try{
+  const res=await fetch("./data/latest.json?ts="+Date.now(),{
+   cache:"no-store"
+  });
+  if(!res.ok)throw Error("HTTP "+res.status);
+  load(await res.json());
+ }catch(err){
+  $("source").textContent=
+   "Fichier distant indisponible : "+err.message;
+ }
+}
+
+function loadDemo(){
+ load({courses:[{
+  id:"demo-r1c1",date:parisDate(),reunion:"R1",
+  course:"1",hippodrome:"DÉMONSTRATION",
+  depart:"23:59",verified:false,
+  partants:Array.from({length:10},(_,i)=>({
+   numero:i+1,nom:"Cheval fictif "+(i+1),
+   forme:(i*17+43)%101,
+   regularite:(i*29+30)%101,
+   aptitude:(i*13+62)%101,
+   entourage:(i*23+40)%101,
+   valeur:(i*19+51)%101,
+   risque:(i*11+8)%45
+  }))
+ }]},true);
+}
+
+const weights=[
+ [0.32,0.25,0.20,0.13,0.10],
+ [0.17,0.34,0.26,0.13,0.10],
+ [0.22,0.17,0.35,0.11,0.15],
+ [0.20,0.15,0.15,0.32,0.18],
+ [0.18,0.20,0.18,0.16,0.28]
+];
+
+function score(h,w,m){
+ const values=[
+  h.forme,h.regularite,h.aptitude,
+  h.entourage,h.valeur
+ ];
+ const base=values.reduce((s,v,i)=>
+  s+Math.max(0,Math.min(100,v))*w[i],0);
+ return base-h.risque*(0.15+m*0.04);
+}
+
+function departureDate(r){
+ if(!/^\d{1,2}:\d{2}$/.test(r.depart))return null;
+ const [h,m]=r.depart.split(":").map(Number);
+ if(h>23||m>59)return null;
+ return {date:r.date,h,m};
+}
+
+function isBeforeStart(r){
+ const dep=departureDate(r);
+ if(!dep)return false;
+ const now=new Intl.DateTimeFormat("en-GB",{
+  timeZone:TZ,year:"numeric",month:"2-digit",
+  day:"2-digit",hour:"2-digit",minute:"2-digit",
+  hourCycle:"h23"
+ }).formatToParts(new Date());
+ const v=k=>now.find(x=>x.type===k)?.value||"";
+ const today=`${v("year")}-${v("month")}-${v("day")}`;
+ const time=Number(v("hour"))*60+Number(v("minute"));
+ return dep.date>today||
+  (dep.date===today && dep.h*60+dep.m>time);
+}
+
+function analyze(){
+ if(!current)return alert("Sélectionnez une course.");
+ const horses=current.horses.filter(h=>
+  !h.nonPartant&&Number.isInteger(h.numero)&&h.numero>0);
+ if(horses.length<5)
+  return alert("Au moins cinq partants valides sont nécessaires.");
+ const keys=["forme","regularite","aptitude","entourage","valeur"];
+ if(horses.some(h=>keys.every(k=>h[k]===0))){
+  $("status").textContent=
+   "Attention : certaines données de performance sont absentes.";
+ }
+ predictions=weights.map((w,m)=>{
+  const ranked=horses.map(h=>({
+   ...h,score:score(h,w,m)
+  })).sort((a,b)=>b.score-a.score||a.numero-b.numero);
+  const top=ranked.slice(0,5);
+  const margin=top[0].score-top[1].score;
+  const qualification=margin>=10?"🌟🌟🌟🌟🌟":
+   margin>=5?"🌟🌟🌟🌟":"Étude";
+  return {
+   moteur:"M"+(m+1),
+   gagnant:top[0],
+   place:top[1],
+   ordre:top.map(h=>h.numero).join("-"),
+   formule:margin>=5?
+    "Simple gagnant "+top[0].numero:
+    "Simple placé "+top[0].numero,
+   qualification,
+   validation:current.verified&&!demo?
+    "Calculé — source déclarée vérifiée":
+    "Non vérifiée",
+   heure:paris(),
+   scores:top.map(h=>({
+    numero:h.numero,score:Number(h.score.toFixed(3))
+   }))
+  };
+ });
+ renderPredictions();
+ const s=store();
+ s.history.push({
+  course:current.id,date:current.date,
+  timestamp:new Date().toISOString(),
+  predictions
+ });
+ save(s);
+ $("status").textContent=
+  "Cinq moteurs calculés. Résultats indicatifs, non garantis.";
+ renderHistory();
+}
+
+function renderPredictions(){
+ $("results").innerHTML=predictions.map(p=>`
+ <tr>
+ <td><b>${safe(p.moteur)}</b></td>
+ <td>${safe(p.gagnant.numero)} ${safe(p.gagnant.nom)}</td>
+ <td>${safe(p.place.numero)} ${safe(p.place.nom)}</td>
+ <td>${safe(p.ordre)}</td>
+ <td>${safe(p.formule)}</td>
+ <td>${safe(p.qualification)}</td>
+ <td>${safe(p.validation)}</td>
+ <td>${safe(p.heure)}</td>
+ </tr>`).join("");
+}
+
+async function sha256(text){
+ const bytes=new TextEncoder().encode(text);
+ const hash=await crypto.subtle.digest("SHA-256",bytes);
+ return Array.from(new Uint8Array(hash))
+  .map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+async function freeze(){
+ if(!current||predictions.length!==5)
+  return alert("Lancez d'abord les cinq moteurs.");
+ if(demo)return alert("FIGÉ interdit en mode démonstration.");
+ if(!current.verified)
+  return alert("FIGÉ refusé : données non vérifiées.");
+ if(!isBeforeStart(current))
+  return alert("Départ passé ou heure de départ invalide.");
+ const s=store();
+ if(s.freezes.some(f=>f.courseId===current.id))
+  return alert("Cette course possède déjà un FIGÉ local.");
+ const payload={
+  courseId:current.id,
+  date:current.date,
+  reunion:current.reunion,
+  course:current.course,
+  depart:current.depart,
+  timestamp:new Date().toISOString(),
+  heureParis:paris(),
+  predictions:structuredClone(predictions)
+ };
+ try{
+  const hash=await sha256(JSON.stringify(payload));
+  // Contrôle une seconde fois après le calcul asynchrone.
+  if(!isBeforeStart(current))
+   return alert("Départ atteint : FIGÉ annulé.");
+  s.freezes.push({payload,hash});
+  save(s);
+  renderFreezes();
+  alert("FIGÉ local enregistré avant départ.");
+ }catch(err){
+  alert("Empreinte impossible : "+err.message);
+ }
+}
+
+function renderFreezes(){
+ const s=store();
+ $("freezes").innerHTML=s.freezes.length?
+  s.freezes.map(f=>`
+   <pre>🔒 ${safe(f.payload.courseId)}
+Paris : ${safe(f.payload.heureParis)}
+SHA-256 : ${safe(f.hash)}
+Moteurs : ${safe(f.payload.predictions.map(p=>
+ p.moteur+" "+p.ordre).join(" | "))}</pre>`).join(""):
+  "Aucun FIGÉ enregistré.";
+}
+
+function renderHistory(){
+ const s=store();
+ $("history").textContent=JSON.stringify({
+  analyses:s.history.length,
+  figes:s.freezes.length,
+  derniers:s.history.slice(-10).map(h=>({
+   course:h.course,date:h.date,
+   timestamp:h.timestamp,
+   moteurs:h.predictions.map(p=>p.moteur)
+  }))
+ },null,2);
+}
+
+function exportData(){
+ const blob=new Blob([JSON.stringify(store(),null,2)],{
+  type:"application/json"
+ });
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="HIPPOFUSION_X1000_ARCHIVES_"+parisDate()+".json";
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+$("restore").onchange=async e=>{
+ const f=e.target.files[0];
+ if(!f)return;
+ try{
+  const data=JSON.parse(await f.text());
+  if(!Array.isArray(data.freezes)||!Array.isArray(data.history))
+   throw Error("Format d'archive incorrect");
+  if(!confirm("Remplacer les archives locales ?"))return;
+  save(data);
+  renderFreezes();
+  renderHistory();
+  alert("Archives restaurées.");
+ }catch(err){alert("Restauration impossible : "+err.message)}
+};
+
+renderFreezes();
+renderHistory();
+loadRemote();
+</script>
+</body>
+</html>
