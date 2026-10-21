@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""HIPPOFUSION X1000 M1–M5 — analyses traçables et FIGÉS protégés.
-
-Entrée : JSON {"courses": [...]} dans data/courses.json par défaut.
-Aucune collecte ni mise réelle de pari n'est effectuée.
-"""
+"""HIPPOFUSION X1000 M1-M5: analyses traçables, sans paris réels."""
 import argparse
 import datetime as dt
 import hashlib
@@ -62,7 +58,8 @@ def analyze(course, at):
             raise ValueError('Numéros invalides ou doublons')
         if not str(course.get('id', '')).strip() or cid == 'inconnu':
             raise ValueError('Identifiant de course manquant')
-        if not str(course.get('source', '')).strip() or course['source'] == 'non_documentee':
+        source = course.get('source')
+        if not isinstance(source, str) or not source.strip() or source == 'non_documentee':
             raise ValueError('Source de course non documentée')
         active = [h for h in runners if not h.get('non_partant', False)]
         if len(active) < 2:
@@ -86,16 +83,12 @@ def analyze(course, at):
             ranking.sort(key=lambda h: (-h['score'], -h['couverture'], h['numero']))
             gap = ranking[0]['score'] - ranking[1]['score']
             eligible = ranking[0]['couverture'] >= .70 and ranking[1]['couverture'] >= .70 and gap >= .035 and at < start
-            motors[engine] = {
-                'classement': ranking[:5], 'gagnant_espere': ranking[0]['numero'],
+            motors[engine] = {'classement': ranking[:5], 'gagnant_espere': ranking[0]['numero'],
                 'place_espere': ranking[1]['numero'], 'ecart': round(gap, 4),
-                'qualification': 'candidate' if eligible else 'abstention',
-                'pari': 'aucun pari automatique',
-            }
+                'qualification': 'candidate' if eligible else 'abstention', 'pari': 'aucun pari automatique'}
         return {'id': cid, 'hippodrome': course.get('hippodrome', ''), 'depart': start.isoformat(),
-                'partants': len(active), 'non_partants': len(runners) - len(active),
-                'source': course['source'], 'moteurs': motors,
-                'statut': 'analyse_provisoire', 'analyse_a': at.isoformat()}
+            'partants': len(active), 'non_partants': len(runners) - len(active), 'source': source,
+            'moteurs': motors, 'statut': 'analyse_provisoire', 'analyse_a': at.isoformat()}
     except (KeyError, TypeError, ValueError, OverflowError, AttributeError) as exc:
         return {'id': cid, 'statut': 'rejetee', 'motif': str(exc), 'analyse_a': at.isoformat()}
 
@@ -103,25 +96,32 @@ def freeze(report, output_dir, date, at, safety_minutes):
     if report['statut'] != 'analyse_provisoire':
         return report
     start = dt.datetime.fromisoformat(report['depart'])
+    safe_id = ''.join(c if c.isascii() and (c.isalnum() or c in '-_') else '_' for c in report['id'])[:65]
+    identity = hashlib.sha256(report['id'].encode('utf-8')).hexdigest()[:16]
+    folder = output_dir / 'figes' / date
+    target = folder / (safe_id + '_' + identity + '.json')
+    # An existing FIGÉ remains the authoritative snapshot, even after departure.
+    if target.exists():
+        try:
+            record = json.loads(target.read_text(encoding='utf-8'))
+            payload = json.dumps(record['rapport'], ensure_ascii=False, sort_keys=True, allow_nan=False).encode('utf-8')
+            valid = hashlib.sha256(payload).hexdigest() == record['sha256']
+            valid = valid and record['rapport']['id'] == report['id']
+            valid = valid and dt.datetime.fromisoformat(record['fige_a']) < dt.datetime.fromisoformat(record['rapport']['depart'])
+        except (OSError, ValueError, TypeError, KeyError):
+            valid = False
+        report['statut'] = 'fige_existant' if valid else 'fige_invalide'
+        report['fichier_fige'] = str(target)
+        return report
     if at >= start - dt.timedelta(minutes=safety_minutes):
         report['motif_fige'] = 'Délai de sécurité dépassé'
         return report
     if not any(m['qualification'] == 'candidate' for m in report['moteurs'].values()):
         report['motif_fige'] = 'Aucun moteur qualifié'
         return report
-    safe_id = ''.join(c if c.isascii() and (c.isalnum() or c in '-_') else '_' for c in report['id'])[:65]
-    identity = hashlib.sha256(report['id'].encode('utf-8')).hexdigest()[:16]
-    folder = output_dir / 'figes' / date
     folder.mkdir(parents=True, exist_ok=True)
-    target = folder / (safe_id + '_' + identity + '.json')
-    if target.exists():
-        report['statut'] = 'fige_existant'
-        report['fichier_fige'] = str(target)
-        return report
     payload = json.dumps(report, ensure_ascii=False, sort_keys=True, allow_nan=False).encode('utf-8')
-    digest = hashlib.sha256(payload).hexdigest()
-    record = {'rapport': report, 'sha256': digest, 'fige_a': at.isoformat()}
-    # O_EXCL interdit tout écrasement, même entre processus concurrents.
+    record = {'rapport': dict(report), 'sha256': hashlib.sha256(payload).hexdigest(), 'fige_a': at.isoformat()}
     try:
         with target.open('x', encoding='utf-8') as f:
             f.write(serialized(record))
@@ -146,8 +146,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.diagnostic:
         print(json.dumps({'python': 'ok', 'timezone': str(PARIS), 'moteurs': list(WEIGHTS),
-                          'collecte': 'fichier JSON externe requis', 'source_presente': args.input.is_file(),
-                          'paris_reels': 'desactives'}, ensure_ascii=False))
+            'collecte': 'fichier JSON externe requis', 'source_presente': args.input.is_file(),
+            'paris_reels': 'desactives'}, ensure_ascii=False))
         return 0
     try:
         dt.date.fromisoformat(args.date)
@@ -189,12 +189,12 @@ def main(argv=None):
         if not reports:
             status = 'aucune_course_verifiee'
     audit = {'date': args.date, 'genere_a': at.isoformat(), 'statut_collecte': status,
-             'courses': reports, 'source': str(args.input) if args.input.is_file() else None,
-             'avertissement': 'Aucune garantie de gain ; données vérifiées requises'}
+        'courses': reports, 'source': str(args.input) if args.input.is_file() else None,
+        'avertissement': 'Aucune garantie de gain ; données vérifiées requises'}
     write_atomic(args.output / ('audit_' + args.date + '.json'), audit)
     write_atomic(args.output / 'audit.json', audit)
     print(json.dumps({'statut': status, 'courses': len(reports),
-                      'figees': sum(r.get('statut') == 'fige' for r in reports)}, ensure_ascii=False))
+        'figees': sum(r.get('statut') == 'fige' for r in reports)}, ensure_ascii=False))
     return 0
 
 if __name__ == '__main__':
