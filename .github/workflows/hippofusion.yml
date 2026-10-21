@@ -15,7 +15,11 @@ concurrency:
 jobs:
   analyse:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
+    env:
+      TZ: Europe/Paris
+      PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Recuperer le depot
@@ -28,28 +32,84 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verifier et executer
-        env:
-          TZ: Europe/Paris
+      - name: Installer les dependances
+        shell: bash
         run: |
-          python -m py_compile main.py
-          python main.py --diagnostic
-          python main.py --figer
-
-      - name: Publier les fichiers JSON
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/courses.json data/figes.json data/audit.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore: actualiser les donnees HIPPOFUSION'
-            git push
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
           fi
 
-      - name: Conserver un rapport
+      - name: Preparer les dossiers
+        shell: bash
+        run: |
+          mkdir -p data
+          mkdir -p rapports
+
+      - name: Verifier le programme
+        shell: bash
+        run: |
+          set -e
+          test -f main.py
+          python -m py_compile main.py
+
+      - name: Diagnostic HIPPOFUSION
+        shell: bash
+        run: |
+          python main.py --diagnostic
+
+      - name: Executer les moteurs et FIGES
+        shell: bash
+        run: |
+          set -e
+          python main.py --figer
+
+      - name: Verifier les fichiers JSON
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for name in (
+              "courses.json",
+              "figes.json",
+              "audit.json",
+          ):
+              path = Path("data") / name
+              if not path.is_file():
+                  print(f"ABSENT : {path}")
+                  continue
+              with path.open(encoding="utf-8") as f:
+                  json.load(f)
+              print(f"VALIDE : {path}")
+          PY
+
+      - name: Publier les fichiers JSON
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A -- data/*.json
+
+          if git diff --cached --quiet; then
+            echo "Aucune nouvelle donnee."
+          else
+            git commit -m "chore: actualiser HIPPOFUSION"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Conserver le rapport
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: hippofusion-${{ github.run_id }}
-          path: data/*.json
+          path: |
+            data/*.json
+            rapports/*
           if-no-files-found: warn
+          retention-days: 30
