@@ -192,7 +192,9 @@ def main(argv=None):
         'courses': reports, 'source': str(args.input) if args.input.is_file() else None,
         'avertissement': 'Aucune garantie de gain ; données vérifiées requises'}
     write_atomic(args.output / ('audit_' + args.date + '.json'), audit)
-    write_atomic(args.output / 'audit.json', audit)
+    write_atomic(args.output / 'audit_latest.json', audit)
+    from publish_data import publish
+    publish(data_dir=args.output)
     print(json.dumps({'statut': status, 'courses': len(reports),
         'figees': sum(r.get('statut') == 'fige' for r in reports)}, ensure_ascii=False))
     return 0 if status == 'ok' else 2
