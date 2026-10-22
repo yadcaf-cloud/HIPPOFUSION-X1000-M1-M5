@@ -1,8 +1,9 @@
 
 """HIPPOFUSION X1000 M1-M5 — Publication sécurisée.
 
-Lit le dernier audit et produit publication_latest.json.
-Ne modifie jamais les PV ni les FIGÉS historiques.
+Lit le dernier audit et publie les données validées.
+Préserve les références PV et FIGÉ.
+Ne modifie jamais les fichiers historiques.
 """
 
 import json
@@ -27,12 +28,12 @@ def publier(data_dir=DATA_DIR):
 
     try:
         audit = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as erreur:
+    except (OSError, ValueError) as erreur:
         print(f"ERREUR : lecture de l'audit : {erreur}")
         return None
 
     if not isinstance(audit, dict):
-        print("ERREUR : l'audit doit être un objet JSON.")
+        print("ERREUR : audit invalide.")
         return None
 
     courses = audit.get("courses", [])
@@ -42,27 +43,41 @@ def publier(data_dir=DATA_DIR):
         return None
 
     publication_courses = []
+    identifiants = set()
 
-    for course in courses:
+    for position, course in enumerate(courses, start=1):
         if not isinstance(course, dict):
-            print("AVERTISSEMENT : course invalide ignorée.")
-            continue
+            print(f"ERREUR : course {position} invalide.")
+            return None
+
+        identifiant = course.get("id")
+
+        if not isinstance(identifiant, str) or not identifiant.strip():
+            print(f"ERREUR : identifiant manquant, course {position}.")
+            return None
+
+        if identifiant in identifiants:
+            print(f"ERREUR : course en double : {identifiant}")
+            return None
+
+        identifiants.add(identifiant)
 
         moteurs = course.get("moteurs", {})
 
         if not isinstance(moteurs, dict):
-            moteurs = {}
+            print(f"ERREUR : moteurs invalides : {identifiant}")
+            return None
 
-        moteurs_valides = {
+        # Copie complète pour conserver les champs existants.
+        nouvelle_course = dict(course)
+
+        # Les moteurs M1 à M5 restent indépendants.
+        # Les autres champs de la course sont préservés.
+        nouvelle_course["moteurs"] = {
             nom: moteurs[nom]
             for nom in MOTEURS
             if nom in moteurs
         }
-
-        # Conserver toutes les données existantes de la course,
-        # notamment les références PV et FIGÉ.
-        nouvelle_course = dict(course)
-        nouvelle_course["moteurs"] = moteurs_valides
 
         publication_courses.append(nouvelle_course)
 
@@ -77,11 +92,16 @@ def publier(data_dir=DATA_DIR):
         "statut_collecte": audit.get("statut_collecte"),
         "nombre_courses": len(publication_courses),
         "courses": publication_courses,
-        "avertissement": (
-            "Analyses hippiques sans garantie de gain. "
-            "Les FIGÉS historiques ne sont jamais modifiés."
-        ),
+        "avertissement": [
+            "Les analyses hippiques ne garantissent aucun gain.",
+            "Les PV et FIGÉS historiques ne sont jamais modifiés."
+        ]
     }
+
+    # Préserver les autres informations générales de l'audit.
+    for cle, valeur in audit.items():
+        if cle not in publication:
+            publication[cle] = valeur
 
     temporaire = None
 
@@ -94,7 +114,7 @@ def publier(data_dir=DATA_DIR):
             dir=data_dir,
             prefix=".publication_",
             suffix=".tmp",
-            delete=False,
+            delete=False
         ) as fichier:
             temporaire = Path(fichier.name)
             json.dump(
@@ -102,10 +122,13 @@ def publier(data_dir=DATA_DIR):
                 fichier,
                 ensure_ascii=False,
                 indent=2,
-                allow_nan=False,
+                allow_nan=False
             )
             fichier.write("\n")
+            fichier.flush()
+            os.fsync(fichier.fileno())
 
+        # Remplacement atomique du fichier de publication.
         os.replace(temporaire, cible)
 
     except (OSError, ValueError, TypeError) as erreur:
@@ -123,7 +146,7 @@ def publier(data_dir=DATA_DIR):
     return cible
 
 
-# Compatibilité avec les anciens appels du logiciel.
+# Compatibilité avec les anciens appels.
 publish = publier
 
 
