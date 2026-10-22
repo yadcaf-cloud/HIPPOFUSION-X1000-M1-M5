@@ -1,505 +1,445 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HIPPOFUSION X1000 M1-M5</title>
-<style>
-:root {
-  font-family: system-ui, Arial, sans-serif;
-  color: #eaf2ff;
-  background: #081426;
-}
-* { box-sizing: border-box; }
-body { margin: 0; }
-header {
-  padding: 28px 15px;
-  text-align: center;
-  background: #112540;
-  border-bottom: 3px solid #16ae90;
-}
-h1 { font-size: clamp(24px, 5vw, 38px); }
-main {
-  max-width: 1100px;
-  margin: auto;
-  padding: 16px;
-}
-section {
-  background: #152741;
-  border: 1px solid #385475;
-  border-radius: 20px;
-  padding: 20px;
-  margin: 18px 0;
-}
-button, select, input {
-  background: #28466b;
-  color: white;
-  border: 1px solid #6580a2;
-  border-radius: 9px;
-  padding: 12px;
-  margin: 5px;
-  max-width: 100%;
-}
-button { cursor: pointer; }
-button:disabled { opacity: .4; }
-label { display: inline-block; margin: 5px; }
-table {
-  border-collapse: collapse;
-  width: 100%;
-  min-width: 800px;
-}
-th, td {
-  padding: 11px;
-  border-bottom: 1px solid #425b78;
-  text-align: left;
-}
-th { color: #9adbcf; }
-.scroll { overflow-x: auto; }
-.error { color: #ff929f; }
-.good { color: #86e5ba; }
-.muted { color: #b6c7dc; }
-article { padding: 10px 0; }
-small { line-height: 1.7; }
-</style>
-</head>
-<body>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<header>
-<h1>🇸🇳🧠🔥 HIPPOFUSION X1000</h1>
-<p>INTELLIGENCE HIPPIQUE — M1 À M5</p>
-<p>Collecte · Analyse · Qualification · FIGÉS · Audit</p>
-</header>
+  <title>HIPPOFUSION X1000 — M1 à M5</title>
 
-<main>
-
-<section>
-<h2>📡 Centre de collecte PMU</h2>
-<p id="status">Chargement des données…</p>
-
-<button id="reload">🔄 Actualiser les données</button>
-<button id="export">📦 Exporter les FIGÉS</button>
-<button id="auditbtn">📋 Exporter l'audit</button>
-
-<p class="muted">
-Source : fichiers JSON du dépôt GitHub.
-La collecte serveur est réalisée séparément.
-</p>
-
-<label>
-<input type="checkbox" id="auto" checked>
-Actualisation toutes les 2 minutes
-</label>
-</section>
-
-<section>
-<h2>🏇 Courses françaises</h2>
-
-<label>Date
-<input type="date" id="date">
-</label>
-
-<label>Réunion
-<input id="reunion" placeholder="R1">
-</label>
-
-<label>Course
-<input id="course" placeholder="C1">
-</label>
-
-<label>Moteur
-<select id="engine">
-<option value="">Tous les moteurs</option>
-<option>M1</option>
-<option>M2</option>
-<option>M3</option>
-<option>M4</option>
-<option>M5</option>
-</select>
-</label>
-
-<label>Statut
-<select id="filter">
-<option value="">Tous les statuts</option>
-<option value="FIGÉ">FIGÉ</option>
-<option value="NON FIGÉ">NON FIGÉ</option>
-</select>
-</label>
-
-<div id="courses"></div>
-</section>
-
-<section>
-<h2>🔒 Archives des FIGÉS</h2>
-<div id="locks"></div>
-</section>
-
-<section>
-<h2>📋 Journal d'audit</h2>
-<div id="audit"></div>
-</section>
-
-<section>
-<h3>⚠️ Règles de sécurité</h3>
-<small>
-Les moteurs M1 à M5 sont expérimentaux.
-Aucune course, performance, cote ou arrivée
-ne doit être inventée.
-
-Les FIGÉS sont uniquement créés côté serveur
-avant le départ de la course.
-
-Les données insuffisantes entraînent
-une abstention.
-
-Aucun pronostic ne garantit un gain.
-</small>
-</section>
-
-</main>
-
-<script>
-"use strict";
-
-const $ = id => document.getElementById(id);
-
-let feed = { courses: [] };
-let locks = [];
-let audits = [];
-
-function safe(value) {
-  return String(value ?? "—").replace(
-    /[&<>"']/g,
-    char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    })[char]
-  );
-}
-
-async function getJSON(path) {
-  const response = await fetch(
-    path + "?v=" + Date.now(),
-    { cache: "no-store" }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      path + " : HTTP " + response.status
-    );
-  }
-
-  return response.json();
-}
-
-function dateParis(value) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    timeZone: "Europe/Paris",
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(date);
-}
-
-function dayParis(value) {
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return "";
-
-  const parts = new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      timeZone: "Europe/Paris",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Arial, sans-serif;
+      background: #091522;
+      color: #eaf4fa;
     }
-  ).formatToParts(date);
 
-  const item = type =>
-    parts.find(p => p.type === type)?.value || "";
+    * {
+      box-sizing: border-box;
+    }
 
-  return [
-    item("year"),
-    item("month"),
-    item("day")
-  ].join("-");
-}
+    body {
+      margin: 0;
+    }
 
-function officialTable(motors) {
-  const selected = $("engine").value;
+    header {
+      padding: 26px 18px;
+      background: #12283c;
+      border-bottom: 3px solid #69dcb6;
+      text-align: center;
+    }
 
-  const names = [
-    "M1", "M2", "M3", "M4", "M5"
-  ].filter(name =>
-    !selected || selected === name
-  );
+    header h1 {
+      margin: 0;
+      font-size: clamp(23px, 5vw, 36px);
+    }
 
-  let html = `
-  <div class="scroll">
-  <table>
-  <thead>
-  <tr>
-  <th>Moteur</th>
-  <th>🥇 Gagnant espéré</th>
-  <th>🥈 Meilleur placé</th>
-  <th>Ordre espéré</th>
-  <th>🎯 Pari retenu</th>
-  <th>Qualification</th>
-  <th>Validation</th>
-  <th>Heure Paris</th>
-  </tr>
-  </thead>
-  <tbody>`;
+    main {
+      width: min(940px, 100%);
+      margin: auto;
+      padding: 24px 16px;
+    }
 
-  for (const name of names) {
-    const motor = motors[name] || {};
+    section {
+      margin-bottom: 22px;
+      padding: 25px;
+      background: #142a3b;
+      border: 1px solid #345063;
+      border-radius: 18px;
+    }
 
-    const order = Array.isArray(motor.ordre)
-      ? motor.ordre.join("-")
-      : "—";
+    h2 {
+      margin-top: 0;
+      color: #8ee9c9;
+    }
 
-    html += `
-    <tr>
-    <td>${safe(name)}</td>
-    <td>${safe(motor.gagnant)}</td>
-    <td>${safe(motor.place)}</td>
-    <td>${safe(order)}</td>
-    <td>${safe(motor.pari || "Aucun")}</td>
-    <td>${safe(motor.qualification || "Non validée")}</td>
-    <td>${safe(motor.statut || "Inconnu")}</td>
-    <td>${safe(motor.fige_at || "—")}</td>
-    </tr>`;
-  }
+    p {
+      line-height: 1.8;
+      color: #b9cdd9;
+    }
 
-  html += "</tbody></table></div>";
-  return html;
-}
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
 
-function render() {
-  const courses = Array.isArray(feed.courses)
-    ? feed.courses
-    : [];
+    button,
+    .button {
+      display: inline-block;
+      padding: 13px 17px;
+      border: 1px solid #466476;
+      border-radius: 9px;
+      background: #233f52;
+      color: #eef8fc;
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
 
-  const filtered = courses.filter(course => {
-    const dateOK =
-      !$("date").value ||
-      dayParis(course.depart) === $("date").value;
+    .primary {
+      background: #78e0ba;
+      border-color: #78e0ba;
+      color: #092b23;
+      font-weight: bold;
+    }
 
-    const reunionOK =
-      !$("reunion").value ||
-      String(course.reunion || "")
-        .toLowerCase()
-        .includes($("reunion").value.toLowerCase());
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
 
-    const courseOK =
-      !$("course").value ||
-      String(course.course || "")
-        .toLowerCase()
-        .includes($("course").value.toLowerCase());
+    :focus-visible {
+      outline: 3px solid #c9ffed;
+      outline-offset: 4px;
+    }
 
-    const locked = locks.some(
-      item => item.id === course.id
-    );
+    label {
+      display: block;
+      margin-top: 18px;
+      color: #c3d8e3;
+    }
 
-    const statusOK =
-      !$("filter").value ||
-      ($("filter").value === "FIGÉ") === locked;
+    select {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border: 1px solid #466476;
+      border-radius: 8px;
+      background: #102331;
+      color: white;
+      font: inherit;
+    }
 
-    return dateOK && reunionOK &&
-      courseOK && statusOK;
-  });
+    input[type="range"] {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      accent-color: #78e0ba;
+    }
 
-  if (!filtered.length) {
-    $("courses").innerHTML =
-      "<p>Aucune course correspondant aux filtres.</p>";
-  } else {
-    $("courses").innerHTML = filtered.map(course => {
-      const history = locks
-        .filter(item => item.id === course.id)
-        .sort((a, b) =>
-          Number(b.version) - Number(a.version)
-        );
+    .small {
+      font-size: 13px;
+    }
 
-      const latest = history[0];
+    footer {
+      padding: 24px 16px;
+      text-align: center;
+      color: #8ca7b7;
+      font-size: 12px;
+    }
 
-      const runners = Array.isArray(course.partants)
-        ? course.partants
-        : [];
-
-      const np = runners.filter(
-        runner => runner.non_partant
-      ).length;
-
-      let prediction = `
-        <p class="muted">
-        Aucun FIGÉ disponible.
-        Une analyse peut être refusée si
-        les données sont insuffisantes.
-        </p>`;
-
-      if (latest) {
-        const motors = {};
-
-        for (const [name, value] of Object.entries(
-          latest.moteurs || {}
-        )) {
-          motors[name] = {
-            ...value,
-            statut: "🔒 V" + latest.version,
-            fige_at: dateParis(latest.fige_at)
-          };
-        }
-
-        prediction = officialTable(motors);
+    @media (max-width: 600px) {
+      section {
+        padding: 20px;
       }
 
-      return `
-      <article>
-      <h3>
-      ${safe(course.reunion)}
-      ${safe(course.course)}
-      — ${safe(course.hippodrome)}
-      </h3>
+      .primary {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>🧠🇫🇷🇸🇳 HIPPOFUSION X1000</h1>
+    <p>Intelligence hippique — M1 à M5</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Bonjour Yahya</h2>
+
+      <p id="accueil">
+        Bonjour Yahya, bienvenue dans HIPPOFUSION X1000.
+        Je suis votre assistant d’analyse hippique.
+        Nous pouvons consulter les courses françaises,
+        approfondir une étude ou retrouver une observation
+        enregistrée. Par quoi souhaitez-vous commencer ?
+      </p>
+
+      <div class="actions">
+        <a
+          class="button primary"
+          href="https://hippofusion-yahya-m1-m5.deepcat8.chatgpt.site"
+        >
+          Ouvrir mon application complète →
+        </a>
+      </div>
+
+      <p class="small">
+        Votre application complète contient les courses,
+        les études, les fiches chevaux, les résultats et
+        le journal. Son accès reste privé : une connexion
+        ChatGPT peut être demandée.
+      </p>
+    </section>
+
+    <section>
+      <h2>🔊 Écouter l’accueil</h2>
 
       <p>
-      ${safe(dateParis(course.depart))}
-      · ${safe(course.discipline)}
-      · ${safe(course.distance)} m
-      · ${runners.length} engagés
-      · ${np} NP
+        La mémoire conserve. L’analyse comprend.
+        La voix transmet. L’expérience enseigne.
       </p>
 
-      <p class="muted">
-      Source : ${safe(course.source || feed.source)}
+      <div class="actions">
+        <button id="ecouter" type="button" disabled>
+          Écouter
+        </button>
+
+        <button id="pause" type="button" disabled>
+          Pause
+        </button>
+
+        <button id="reprendre" type="button" disabled>
+          Reprendre
+        </button>
+
+        <button id="arreter" type="button" disabled>
+          Arrêter
+        </button>
+      </div>
+
+      <p id="statut" role="status" aria-live="polite">
+        Vérification de la fonction vocale…
       </p>
+
+      <label for="voix">Voix française</label>
+      <select id="voix">
+        <option value="">Français automatique</option>
+      </select>
+
+      <label for="vitesse">
+        Vitesse : <span id="vitesse-valeur">1</span>
+      </label>
+
+      <input
+          id="vitesse"
+          type="range"
+          min="0.7"
+          max="1.3"
+          step="0.1"
+          value="1"
+      >
+
+      <p class="small">
+        Aucun son ne démarre automatiquement.
+        Cette page n’utilise pas le microphone.
+        Une voix en ligne peut transmettre le texte
+        à son fournisseur.
+      </p>
+    </section>
+
+    <section>
+      <h2>Une mémoire pour comprendre</h2>
 
       <p>
-      ${latest
-        ? "🔒 FIGÉ V" + safe(latest.version)
-          + " — " + safe(dateParis(latest.fige_at))
-        : "NON FIGÉ"}
+        HIPPOFUSION conserve les observations disponibles,
+        distingue les faits des hypothèses et présente
+        les limites de ses analyses.
       </p>
 
-      ${prediction}
-      </article>
-      <hr>`;
-    }).join("");
-  }
+      <p class="small">
+        Cette page GitHub est une porte d’entrée.
+        Elle ne collecte pas elle-même les courses et
+        ne stocke pas la base de données.
+        Les analyses restent exploratoires :
+        aucun résultat ni gain n’est garanti.
+      </p>
+    </section>
+  </main>
 
-  $("locks").textContent = locks.length
-    ? locks.length + " archive(s) FIGÉES."
-    : "Aucun FIGÉ archivé.";
+  <footer>
+    HIPPOFUSION X1000 — M1 à M5<br>
+    La vérité avant le pronostic.
+  </footer>
 
-  $("audit").innerHTML = audits
-    .slice(-20)
-    .reverse()
-    .map(item => `
-      <p><small>
-      ${safe(item.at)}
-      — ${safe(item.event)}
-      : ${safe(item.detail)}
-      </small></p>
-    `).join("") || "Aucun audit disponible.";
-}
+  <script>
+    const ecouter = document.getElementById("ecouter");
+    const pause = document.getElementById("pause");
+    const reprendre = document.getElementById("reprendre");
+    const arreter = document.getElementById("arreter");
+    const statut = document.getElementById("statut");
+    const choixVoix = document.getElementById("voix");
+    const vitesse = document.getElementById("vitesse");
+    const vitesseValeur =
+      document.getElementById("vitesse-valeur");
 
-async function refresh() {
-  const errors = [];
+    let voixFrancaises = [];
+    let lecture = null;
+    let generation = 0;
 
-  try {
-    feed = await getJSON("data/courses.json");
+    vitesse.addEventListener("input", () => {
+      vitesseValeur.textContent = vitesse.value;
+    });
 
-    if (!Array.isArray(feed.courses)) {
-      throw new Error(
-        "Format invalide : courses doit être une liste"
+    function boutonsAuRepos() {
+      pause.disabled = true;
+      reprendre.disabled = true;
+      arreter.disabled = true;
+    }
+
+    if (
+      "speechSynthesis" in window &&
+      "SpeechSynthesisUtterance" in window
+    ) {
+      const synthese = window.speechSynthesis;
+
+      ecouter.disabled = false;
+      statut.textContent =
+        "Appuyez sur Écouter pour entendre l’accueil.";
+
+      function chargerVoix() {
+        const selection = choixVoix.value;
+
+        voixFrancaises = synthese.getVoices().filter(
+          voix => /^fr/i.test(voix.lang)
+        );
+
+        choixVoix.replaceChildren(
+          new Option("Français automatique", "")
+        );
+
+        voixFrancaises.forEach(voix => {
+          const localisation = voix.localService
+            ? "sur l’appareil"
+            : "service en ligne";
+
+          choixVoix.add(
+            new Option(
+              voix.name + " — " + localisation,
+              voix.voiceURI
+            )
+          );
+        });
+
+        if (
+          voixFrancaises.some(
+            voix => voix.voiceURI === selection
+          )
+        ) {
+          choixVoix.value = selection;
+        }
+      }
+
+      chargerVoix();
+
+      synthese.addEventListener(
+        "voiceschanged",
+        chargerVoix
       );
+
+      ecouter.addEventListener("click", () => {
+        generation++;
+        const numeroLecture = generation;
+
+        synthese.cancel();
+        synthese.resume();
+
+        lecture = new SpeechSynthesisUtterance(
+          document.getElementById("accueil")
+            .textContent.replace(/\s+/g, " ").trim()
+        );
+
+        lecture.lang = "fr-FR";
+        lecture.rate = Number(vitesse.value);
+
+        const voixSelectionnee =
+          voixFrancaises.find(
+            voix => voix.voiceURI === choixVoix.value
+          ) ||
+          voixFrancaises.find(
+            voix => voix.localService
+          ) ||
+          voixFrancaises[0];
+
+        if (voixSelectionnee) {
+          lecture.voice = voixSelectionnee;
+        }
+
+        statut.textContent = "Démarrage de la lecture…";
+        arreter.disabled = false;
+
+        lecture.onstart = () => {
+          if (numeroLecture !== generation) return;
+
+          statut.textContent = "Lecture en cours.";
+          pause.disabled = false;
+          reprendre.disabled = true;
+        };
+
+        lecture.onend = () => {
+          if (numeroLecture !== generation) return;
+
+          statut.textContent = "Lecture terminée.";
+          boutonsAuRepos();
+          lecture = null;
+        };
+
+        lecture.onerror = () => {
+          if (numeroLecture !== generation) return;
+
+          statut.textContent =
+            "Lecture indisponible. Essayez une autre voix " +
+            "ou vérifiez les voix françaises de votre appareil.";
+
+          boutonsAuRepos();
+          lecture = null;
+        };
+
+        try {
+          synthese.speak(lecture);
+        } catch {
+          statut.textContent =
+            "La lecture ne peut pas démarrer. " +
+            "Le texte reste disponible.";
+
+          boutonsAuRepos();
+        }
+      });
+
+      pause.addEventListener("click", () => {
+        synthese.pause();
+
+        statut.textContent =
+          "Pause demandée. Si votre téléphone ne la " +
+          "prend pas en charge, utilisez Arrêter.";
+
+        pause.disabled = true;
+        reprendre.disabled = false;
+      });
+
+      reprendre.addEventListener("click", () => {
+        synthese.resume();
+
+        statut.textContent = "Reprise demandée.";
+        pause.disabled = false;
+        reprendre.disabled = true;
+      });
+
+      arreter.addEventListener("click", () => {
+        generation++;
+        synthese.cancel();
+        lecture = null;
+
+        statut.textContent = "Lecture arrêtée.";
+        boutonsAuRepos();
+      });
+
+      window.addEventListener("pagehide", () => {
+        generation++;
+        synthese.cancel();
+      });
+    } else {
+      statut.textContent =
+        "La lecture vocale n’est pas disponible dans " +
+        "ce navigateur. Le texte reste accessible.";
     }
-  } catch (error) {
-    errors.push(error.message);
-    feed = { courses: [] };
-  }
-
-  try {
-    locks = await getJSON("data/figes.json");
-    if (!Array.isArray(locks)) {
-      throw new Error("Format FIGÉS invalide");
-    }
-  } catch (error) {
-    errors.push(error.message);
-    locks = [];
-  }
-
-  try {
-    audits = await getJSON("data/audit.json");
-    if (!Array.isArray(audits)) {
-      throw new Error("Format audit invalide");
-    }
-  } catch (error) {
-    errors.push(error.message);
-    audits = [];
-  }
-
-  if (errors.length) {
-    $("status").innerHTML =
-      '<span class="error">' +
-      safe(errors.join(" | ")) +
-      "</span>";
-  } else {
-    $("status").innerHTML =
-      '<span class="good">Fichiers accessibles</span>' +
-      "<p>Courses : " + feed.courses.length + "</p>" +
-      "<p>Dernière collecte : " +
-      safe(feed.updated_at || "Jamais") + "</p>" +
-      "<p>État : " +
-      safe(feed.status || "Non renseigné") + "</p>";
-  }
-
-  render();
-}
-
-function download(name, data) {
-  const blob = new Blob(
-    [JSON.stringify(data, null, 2)],
-    { type: "application/json" }
-  );
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = name;
-  link.click();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-$("reload").onclick = refresh;
-
-$("export").onclick = () =>
-  download("figes.json", locks);
-
-$("auditbtn").onclick = () =>
-  download("audit.json", audits);
-
-for (const id of [
-  "date", "reunion", "course", "engine", "filter"
-]) {
-  $(id).addEventListener("input", render);
-}
-
-refresh();
-
-setInterval(() => {
-  if ($("auto").checked) {
-    refresh();
-  }
-}, 120000);
-</script>
-
+  </script>
 </body>
 </html>
