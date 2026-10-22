@@ -1,7 +1,7 @@
-"""HIPPOFUSION X1000 M1-M5 — Publication sécurisée.
+"""HIPPOFUSION X1000 M1-M5 — publication prudente des audits.
 
-Lit data/audit_latest.json et écrit data/publication_latest.json.
-Ne modifie aucun PV ni FIGÉ historique.
+Lit data/audit_latest.json et produit data/publication_latest.json.
+Ne crée, ne valide et ne modifie aucun PV ou FIGÉ historique.
 """
 
 import json
@@ -14,7 +14,7 @@ MOTEURS = ("M1", "M2", "M3", "M4", "M5")
 
 
 def _moteurs_valides(valeur):
-    """Conserve les moteurs connus, sans inventer de prédictions."""
+    """Conserve seulement les moteurs connus, sans inventer de prédictions."""
     if valeur is None:
         return {}
     if isinstance(valeur, dict):
@@ -22,16 +22,19 @@ def _moteurs_valides(valeur):
     if isinstance(valeur, list):
         resultat = {}
         for element in valeur:
-            if isinstance(element, dict):
-                nom = element.get("moteur", element.get("nom"))
-                if nom in MOTEURS and nom not in resultat:
-                    resultat[nom] = element
+            if not isinstance(element, dict):
+                raise ValueError("Chaque moteur doit être un objet JSON.")
+            nom = element.get("moteur", element.get("nom"))
+            if nom in MOTEURS:
+                if nom in resultat:
+                    raise ValueError(f"Moteur en double : {nom}")
+                resultat[nom] = element
         return resultat
     raise ValueError("Le champ moteurs doit être un objet ou une liste.")
 
 
 def publier(data_dir=DATA_DIR):
-    """Publie l'audit de manière atomique; renvoie le chemin ou None."""
+    """Publie un audit validé structurellement ; renvoie son chemin ou None."""
     data_dir = Path(data_dir)
     source = data_dir / "audit_latest.json"
     cible = data_dir / "publication_latest.json"
@@ -40,7 +43,6 @@ def publier(data_dir=DATA_DIR):
     try:
         if not source.is_file():
             raise FileNotFoundError(f"Audit introuvable : {source}")
-
         audit = json.loads(source.read_text(encoding="utf-8"))
         if not isinstance(audit, dict):
             raise ValueError("L'audit doit être un objet JSON.")
@@ -62,33 +64,24 @@ def publier(data_dir=DATA_DIR):
             identifiants.add(identifiant)
 
             statut = course.get("statut")
-            # Ne jamais fabriquer de FIGÉ à partir d'une analyse provisoire.
             if statut is not None and not isinstance(statut, str):
                 raise ValueError(f"Course {identifiant} : statut invalide.")
             moteurs = _moteurs_valides(course.get("moteurs"))
-            courses.append({
-                "id": identifiant,
-                "hippodrome": course.get("hippodrome"),
-                "depart": course.get("depart"),
-                "partants": course.get("partants"),
-                "non_partants": course.get("non_partants", []),
-                "source": course.get("source"),
-                "statut": statut,
-                "analyse_a": course.get("analyse_a"),
-                "fichier_fige": course.get("fichier_fige"),
-                "moteurs": moteurs,
-            })
+            # Conserver les données d'origine, sans inventer ni changer de statut.
+            entree = dict(course)
+            entree["id"] = identifiant
+            entree["moteurs"] = moteurs
+            courses.append(entree)
 
         publication = {
-            "logiciel": "HIPPOFUSION X1000 M1-M5",
             "date": audit.get("date"),
             "genere_a": audit.get("genere_a"),
             "statut_collecte": audit.get("statut_collecte"),
             "courses": courses,
-            "avertissement": [
-                "Les analyses ne garantissent aucun gain.",
-                "Les PV et FIGÉS historiques sont préservés.",
+            "informations": [
+                "Les PV et FIGÉS historiques ne sont pas modifiés.",
                 "Une analyse provisoire n'est pas un FIGÉ.",
+                "Les statuts publiés ne constituent pas une authentification des FIGÉS.",
             ],
         }
 
@@ -103,7 +96,8 @@ def publier(data_dir=DATA_DIR):
             fichier.flush()
             os.fsync(fichier.fileno())
         os.replace(temporaire, cible)
-        print(f"HIPPOFUSION X1000 — Publication réussie : {len(courses)} course(s)")
+        temporaire = None
+        print(f"HIPPOFUSION X1000 — {len(courses)} course(s) publiée(s).")
         print(f"Fichier : {cible}")
         return cible
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as erreur:
@@ -114,7 +108,6 @@ def publier(data_dir=DATA_DIR):
             temporaire.unlink(missing_ok=True)
 
 
-# Compatibilité avec les anciens appels et main.py.
 publish = publier
 
 if __name__ == "__main__":
