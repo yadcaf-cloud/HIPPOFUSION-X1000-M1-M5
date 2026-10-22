@@ -1,0 +1,77 @@
+"""HIPPOFUSION X1000 M1-M5 — Publication des analyses.
+
+Lit le dernier audit et produit un fichier de publication.
+Ne modifie jamais les FIGÉS historiques.
+"""
+
+import json
+import os
+from pathlib import Path
+
+
+def publish(data_dir=Path("data")):
+    data_dir = Path(data_dir)
+    source = data_dir / "audit_latest.json"
+
+    if not source.is_file():
+        return None
+
+    audit = json.loads(
+        source.read_text(encoding="utf-8")
+    )
+
+    courses = audit.get("courses", [])
+
+    if not isinstance(courses, list):
+        raise ValueError(
+            "Audit invalide : courses doit être une liste"
+        )
+
+    publication = {
+        "date": audit.get("date"),
+        "genere_a": audit.get("genere_a"),
+        "statut_collecte": audit.get("statut_collecte"),
+        "courses": [
+            {
+                "id": course.get("id"),
+                "hippodrome": course.get("hippodrome"),
+                "depart": course.get("depart"),
+                "partants": course.get("partants"),
+                "non_partants": course.get("non_partants"),
+                "statut": course.get("statut"),
+                "moteurs": course.get("moteurs", {}),
+            }
+            for course in courses
+            if isinstance(course, dict)
+        ],
+        "avertissement": (
+            "Analyses exploratoires, "
+            "sans garantie de gain."
+        ),
+    }
+
+    target = data_dir / "publication_latest.json"
+
+    temporary = data_dir / (
+        "publication_latest."
+        + str(os.getpid())
+        + ".tmp"
+    )
+
+    try:
+        temporary.write_text(
+            json.dumps(
+                publication,
+                ensure_ascii=False,
+                indent=2,
+                allow_nan=False,
+            ) + "\n",
+            encoding="utf-8",
+        )
+
+        os.replace(temporary, target)
+
+    finally:
+        temporary.unlink(missing_ok=True)
+
+    return target
