@@ -13,12 +13,22 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 MOTEURS = ("M1", "M2", "M3", "M4", "M5")
 
 
+def _sans_constante_invalide(valeur):
+    raise ValueError(f"Constante JSON interdite : {valeur}")
+
+
 def _moteurs_valides(valeur):
-    """Conserve seulement les moteurs connus, sans inventer de prédictions."""
+    """Conserve les moteurs connus sans inventer de prédictions."""
     if valeur is None:
         return {}
     if isinstance(valeur, dict):
-        return {nom: valeur[nom] for nom in MOTEURS if nom in valeur}
+        resultat = {}
+        for nom in MOTEURS:
+            if nom in valeur:
+                if not isinstance(valeur[nom], dict):
+                    raise ValueError(f"Moteur {nom} : objet JSON attendu.")
+                resultat[nom] = valeur[nom]
+        return resultat
     if isinstance(valeur, list):
         resultat = {}
         for element in valeur:
@@ -34,7 +44,7 @@ def _moteurs_valides(valeur):
 
 
 def publier(data_dir=DATA_DIR):
-    """Publie un audit validé structurellement ; renvoie son chemin ou None."""
+    """Publie un audit structurellement contrôlé ; renvoie son chemin ou None."""
     data_dir = Path(data_dir)
     source = data_dir / "audit_latest.json"
     cible = data_dir / "publication_latest.json"
@@ -43,7 +53,10 @@ def publier(data_dir=DATA_DIR):
     try:
         if not source.is_file():
             raise FileNotFoundError(f"Audit introuvable : {source}")
-        audit = json.loads(source.read_text(encoding="utf-8"))
+        audit = json.loads(
+            source.read_text(encoding="utf-8"),
+            parse_constant=_sans_constante_invalide,
+        )
         if not isinstance(audit, dict):
             raise ValueError("L'audit doit être un objet JSON.")
         donnees = audit.get("courses", [])
@@ -67,7 +80,6 @@ def publier(data_dir=DATA_DIR):
             if statut is not None and not isinstance(statut, str):
                 raise ValueError(f"Course {identifiant} : statut invalide.")
             moteurs = _moteurs_valides(course.get("moteurs"))
-            # Conserver les données d'origine, sans inventer ni changer de statut.
             entree = dict(course)
             entree["id"] = identifiant
             entree["moteurs"] = moteurs
@@ -85,14 +97,17 @@ def publier(data_dir=DATA_DIR):
             ],
         }
 
+        # Valider entièrement le JSON avant toute écriture sur disque.
+        contenu = json.dumps(
+            publication, ensure_ascii=False, indent=2, allow_nan=False
+        ) + "\n"
         data_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", dir=data_dir,
             prefix=".publication_", suffix=".tmp", delete=False
         ) as fichier:
             temporaire = Path(fichier.name)
-            json.dump(publication, fichier, ensure_ascii=False, indent=2, allow_nan=False)
-            fichier.write("\n")
+            fichier.write(contenu)
             fichier.flush()
             os.fsync(fichier.fileno())
         os.replace(temporaire, cible)
@@ -100,7 +115,7 @@ def publier(data_dir=DATA_DIR):
         print(f"HIPPOFUSION X1000 — {len(courses)} course(s) publiée(s).")
         print(f"Fichier : {cible}")
         return cible
-    except (OSError, ValueError, TypeError, json.JSONDecodeError) as erreur:
+    except (OSError, ValueError, TypeError) as erreur:
         print(f"ERREUR : publication impossible : {erreur}")
         return None
     finally:
