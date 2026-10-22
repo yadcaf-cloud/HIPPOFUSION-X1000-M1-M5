@@ -1,16 +1,14 @@
+
 """HIPPOFUSION X1000 M1-M5 — Publication sécurisée.
 
-Lit le dernier audit et publie les données validées.
-Préserve les références PV et FIGÉ.
-Ne modifie jamais les fichiers historiques.
+Lit audit_latest.json et produit publication_latest.json.
+Ne modifie jamais les fichiers PV et FIGÉS historiques.
 """
 
 import json
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 MOTEURS = ("M1", "M2", "M3", "M4", "M5")
@@ -27,129 +25,129 @@ def publier(data_dir=DATA_DIR):
 
     try:
         audit = json.loads(source.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as erreur:
-        print(f"ERREUR : lecture de l'audit : {erreur}")
-        return None
 
-    if not isinstance(audit, dict):
-        print("ERREUR : audit invalide.")
-        return None
+        if not isinstance(audit, dict):
+            raise ValueError("Audit invalide.")
 
-    courses = audit.get("courses", [])
+        donnees = audit.get("courses", [])
 
-    if not isinstance(courses, list):
-        print("ERREUR : courses doit être une liste.")
-        return None
+        if not isinstance(donnees, list):
+            raise ValueError("courses doit être une liste.")
 
-    publication_courses = []
-    identifiants = set()
+        publication_courses = []
+        identifiants = set()
 
-    for position, course in enumerate(courses, start=1):
-        if not isinstance(course, dict):
-            print(f"ERREUR : course {position} invalide.")
-            return None
+        for course in donnees:
+            if not isinstance(course, dict):
+                raise ValueError("Course invalide.")
 
-        identifiant = course.get("id")
+            identifiant = course.get("id")
 
-        if not isinstance(identifiant, str) or not identifiant.strip():
-            print(f"ERREUR : identifiant manquant, course {position}.")
-            return None
+            if not isinstance(identifiant, str):
+                continue
 
-        if identifiant in identifiants:
-            print(f"ERREUR : course en double : {identifiant}")
-            return None
+            identifiant = identifiant.strip()
 
-        identifiants.add(identifiant)
+            if not identifiant:
+                continue
 
-        moteurs = course.get("moteurs", {})
+            if identifiant in identifiants:
+                raise ValueError(
+                    f"Course en double : {identifiant}"
+                )
 
-        if not isinstance(moteurs, dict):
-            print(f"ERREUR : moteurs invalides : {identifiant}")
-            return None
+            identifiants.add(identifiant)
 
-        # Copie complète pour conserver les champs existants.
-        nouvelle_course = dict(course)
+            moteurs = course.get("moteurs", {})
 
-        # Les moteurs M1 à M5 restent indépendants.
-        # Les autres champs de la course sont préservés.
-        nouvelle_course["moteurs"] = {
-            nom: moteurs[nom]
-            for nom in MOTEURS
-            if nom in moteurs
+            if not isinstance(moteurs, dict):
+                raise ValueError(
+                    f"Moteurs invalides : {identifiant}"
+                )
+
+            for moteur in moteurs:
+                if moteur not in MOTEURS:
+                    raise ValueError(
+                        f"Moteur inconnu : {moteur}"
+                    )
+
+            publication_courses.append({
+                "id": identifiant,
+                "hippodrome": course.get("hippodrome"),
+                "depart": course.get("depart"),
+                "partants": course.get("partants"),
+                "non_partants": course.get("non_partants"),
+                "source": course.get("source"),
+                "statut": course.get("statut"),
+                "analyse_a": course.get("analyse_a"),
+                "fichier_fige": course.get("fichier_fige"),
+                "moteurs": moteurs
+            })
+
+        publication = {
+            "logiciel": "HIPPOFUSION X1000 M1-M5",
+            "date": audit.get("date"),
+            "genere_a": audit.get("genere_a"),
+            "statut_collecte": audit.get("statut_collecte"),
+            "courses": publication_courses,
+            "avertissement": [
+                "Les analyses ne garantissent aucun gain.",
+                "Les PV et FIGÉS historiques sont préservés.",
+                "Une analyse provisoire n'est pas un FIGÉ."
+            ]
         }
 
-        publication_courses.append(nouvelle_course)
-
-    publication = {
-        "logiciel": "HIPPOFUSION X1000",
-        "architecture": "M1-M5",
-        "date": audit.get("date"),
-        "genere_a": audit.get("genere_a"),
-        "publie_a": datetime.now(
-            ZoneInfo("Europe/Paris")
-        ).isoformat(),
-        "statut_collecte": audit.get("statut_collecte"),
-        "nombre_courses": len(publication_courses),
-        "courses": publication_courses,
-        "avertissement": [
-            "Les analyses hippiques ne garantissent aucun gain.",
-            "Les PV et FIGÉS historiques ne sont jamais modifiés."
-        ]
-    }
-
-    # Préserver les autres informations générales de l'audit.
-    for cle, valeur in audit.items():
-        if cle not in publication:
-            publication[cle] = valeur
-
-    temporaire = None
-
-    try:
         data_dir.mkdir(parents=True, exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=data_dir,
-            prefix=".publication_",
-            suffix=".tmp",
-            delete=False
-        ) as fichier:
-            temporaire = Path(fichier.name)
-            json.dump(
-                publication,
-                fichier,
-                ensure_ascii=False,
-                indent=2,
-                allow_nan=False
-            )
-            fichier.write("\n")
-            fichier.flush()
-            os.fsync(fichier.fileno())
+        temporaire = None
 
-        # Remplacement atomique du fichier de publication.
-        os.replace(temporaire, cible)
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=data_dir,
+                prefix=".publication_",
+                suffix=".tmp",
+                delete=False
+            ) as fichier:
+
+                temporaire = Path(fichier.name)
+
+                json.dump(
+                    publication,
+                    fichier,
+                    ensure_ascii=False,
+                    indent=2,
+                    allow_nan=False
+                )
+
+                fichier.write("\n")
+                fichier.flush()
+                os.fsync(fichier.fileno())
+
+            os.replace(temporaire, cible)
+
+        finally:
+            if temporaire is not None:
+                temporaire.unlink(missing_ok=True)
+
+        print("HIPPOFUSION X1000 — Publication réussie.")
+        print(f"Courses publiées : {len(publication_courses)}")
+        print(f"Fichier : {cible}")
+
+        return cible
 
     except (OSError, ValueError, TypeError) as erreur:
         print(f"ERREUR : publication impossible : {erreur}")
         return None
 
-    finally:
-        if temporaire is not None:
-            temporaire.unlink(missing_ok=True)
 
-    print("HIPPOFUSION X1000 — Publication réussie.")
-    print(f"Courses publiées : {len(publication_courses)}")
-    print(f"Fichier : {cible}")
-
-    return cible
-
-
-# Compatibilité avec les anciens appels.
+# Compatibilité avec main.py et les anciens appels.
 publish = publier
 
 
 if __name__ == "__main__":
     resultat = publier()
+
     if resultat is None:
         raise SystemExit(1)
