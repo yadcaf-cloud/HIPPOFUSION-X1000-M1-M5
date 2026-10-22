@@ -1,4 +1,3 @@
-
 """HIPPOFUSION X1000 M1-M5 — Publication sécurisée.
 
 Lit audit_latest.json et produit publication_latest.json.
